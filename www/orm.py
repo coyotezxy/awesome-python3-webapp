@@ -9,10 +9,13 @@ import asyncio, logging
 import aiomysql
 
 def log(sql, args=()):
+    #在控制台输出日志，info证明正常工作（https://www.cnblogs.com/nancyzhu/p/8551506.html)
     logging.info('SQL: %s' % sql)
 
 async def create_pool(loop, **kw):
     logging.info('create database connection pool...')
+    #创建与MySQL数据库的连接池的协程
+    #每个HTTP请求都可以从连接池中直接获取数据库连接。使用连接池的好处是不必频繁地打开和关闭数据库连接，而是能复用就尽量复用
     global __pool
     __pool = await aiomysql.create_pool(
         host=kw.get('host', 'localhost'),
@@ -31,6 +34,11 @@ async def select(sql, args, size=None):
     log(sql, args)
     global __pool
     async with __pool.get() as conn:
+        #DictCursor的这个功能是继承于CursorDictRowsMixIn，这个MixIn提供了3个额外的方法: fetchoneDict、fetchmanyDict、
+        # fetchallDict。
+        #默认情况下cursor方法返回的是BaseCursor类型对象，BaseCursor类型对象在执行查询后每条记录的结果以列表(list)表示。如果要返回
+        # 字典(dict)表示的记录，就要设置cursorclass参数为MySQLdb.cursors.DictCursor类。
+        #cur = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(sql.replace('?', '%s'), args or ())
             if size:
